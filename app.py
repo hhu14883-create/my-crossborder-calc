@@ -1,161 +1,102 @@
-import json
-import urllib.error
-import urllib.request
-
 import streamlit as st
+import requests
 
-FALLBACK_HUI_LV = 7.2
+# ========================================================
+# 📢 商业化配置中心（奶爸可以在这里直接修改你的信息！）
+# ========================================================
+AUTHOR_WECHAT = "YZ19157696431"  # 👈 快把双引号里的字改成你真正的微信号！
+SETTLEMENT_PROMO_URL = "https://www.baidu.com"  # 优惠通道链接（暂时跳百度）
 
-PLATFORM_OPTIONS = {
-    "Amazon (佣金15%)": {"display": "亚马逊", "yong_jin_bili": 15.0},
-    "TikTok Shop (佣金5%)": {"display": "TikTok", "yong_jin_bili": 5.0},
-    "Temu (佣金0%)": {"display": "Temu", "yong_jin_bili": 0.0},
-}
+# 设置网页标题和图标
+st.set_page_config(page_title="跨境电商多平台利润计算器", page_icon="📊", layout="wide")
 
-
-def fetch_usd_cny_rate():
-    """从免费公开接口获取美元兑人民币汇率，失败时返回 None。"""
-    sources = [
-        (
-            "https://api.frankfurter.app/latest?from=USD&to=CNY",
-            lambda data: data["rates"]["CNY"],
-        ),
-        (
-            "https://open.er-api.com/v6/latest/USD",
-            lambda data: data["rates"]["CNY"],
-        ),
-    ]
-    headers = {"User-Agent": "MystoreAI-ProfitCalculator/1.0"}
-    for url, extract in sources:
-        try:
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                rate = float(extract(data))
-                if rate > 0:
-                    return rate
-        except (urllib.error.URLError, urllib.error.HTTPError, KeyError, TypeError, ValueError):
-            continue
-    return None
-
-
-@st.cache_data(ttl=3600, show_spinner=False)
-def get_exchange_rate():
-    """缓存汇率，减少重复请求；失败时使用保底汇率。"""
-    rate = fetch_usd_cny_rate()
-    if rate is None:
-        return FALLBACK_HUI_LV, False
-    return rate, True
-
-
-def calc_profit(
-    cai_gou,
-    yun_fei,
-    tui_huo_sun_hao,
-    shou_jia_usd,
-    yue_xiao_liang,
-    yong_jin_bili,
-    hui_lv,
-):
-    xiao_shou_e = shou_jia_usd * hui_lv
-    ping_tai_yong_jin = xiao_shou_e * (yong_jin_bili / 100)
-    zong_cheng_ben = cai_gou + yun_fei + ping_tai_yong_jin + tui_huo_sun_hao
-    li_run = xiao_shou_e - zong_cheng_ben
-    yue_zong_li_run = li_run * yue_xiao_liang
-    mao_li_lv = (li_run / xiao_shou_e * 100) if xiao_shou_e > 0 else 0.0
-    return {
-        "xiao_shou_e": xiao_shou_e,
-        "ping_tai_yong_jin": ping_tai_yong_jin,
-        "zong_cheng_ben": zong_cheng_ben,
-        "li_run": li_run,
-        "mao_li_lv": mao_li_lv,
-        "yue_zong_li_run": yue_zong_li_run,
-    }
-
-
-st.set_page_config(
-    page_title="跨境卖家利润计算器",
-    page_icon="💰",
-    layout="wide",
-)
-
-st.title("💰 跨境卖家利润计算器")
-st.caption("左右分栏实时测算 · 适合亚马逊 / TikTok / Temu 卖家")
-
-col_input, col_report = st.columns([1, 1], gap="large")
-
-with col_input:
-    st.subheader("📋 数据输入区")
-    platform_label = st.selectbox(
-        "选择销售平台",
-        options=list(PLATFORM_OPTIONS.keys()),
-        index=0,
-    )
-    platform = PLATFORM_OPTIONS[platform_label]
-
-    cai_gou = st.number_input("产品采购价 (人民币)", min_value=0.0, value=0.0, step=1.0, format="%.2f")
-    yun_fei = st.number_input("国内到海外运费 (人民币)", min_value=0.0, value=0.0, step=1.0, format="%.2f")
-    tui_huo_sun_hao = st.number_input(
-        "单件退货损耗成本 (人民币)", min_value=0.0, value=0.0, step=1.0, format="%.2f"
-    )
-    shou_jia_usd = st.number_input("拟定售价 (美金)", min_value=0.0, value=0.0, step=0.1, format="%.2f")
-    yue_xiao_liang = st.number_input("预计月销量 (件)", min_value=0, value=0, step=1)
-
-with col_report:
-    st.subheader("📊 实时利润报告区")
-
-    hui_lv, rate_ok = get_exchange_rate()
-    if rate_ok:
-        st.success(f"💱 今日实时美金汇率：**{hui_lv:.4f}**（已自动联网获取）")
+# ========================================================
+# 🏪 左侧边栏：数据输入区
+# ========================================================
+with st.sidebar:
+    st.header("📋 数据输入区")
+    st.write("左右分栏实时测算 · 适合亚马逊 / TikTok / Temu 卖家")
+    st.write("---")
+    
+    # 平台选择
+    platform = st.selectbox("选择销售平台", ["Amazon (佣金15%)", "TikTok (佣金5%)", "Temu (佣金0%)"])
+    
+    # 根据平台设定佣金比例
+    if "Amazon" in platform:
+        commission_rate = 0.15
+    elif "TikTok" in platform:
+        commission_rate = 0.05
     else:
-        st.warning(f"💱 美金汇率：**{hui_lv:.4f}**（网络获取失败，已使用保底汇率 {FALLBACK_HUI_LV}）")
+        commission_rate = 0.00
+        
+    # 输入框
+    cost_price = st.number_input("产品采购价 (人民币)", min_value=0.0, value=0.0, step=1.0)
+    shipping_fee = st.number_input("国内到海外运费 (人民币)", min_value=0.0, value=0.0, step=1.0)
+    return_cost = st.number_input("单件退货损耗成本 (人民币)", min_value=0.0, value=0.0, step=1.0)
+    sale_price_usd = st.number_input("拟定售价 (美金)", min_value=0.0, value=0.0, step=0.1)
+    monthly_sales = st.number_input("预计月销量 (件)", min_value=0, value=0, step=10)
 
-    st.markdown(f"### 🏪 评估平台：{platform['display']}")
+    # ----------------------------------------------------
+    # 🔥 黄金引流钩子：左侧边栏最下方
+    # ----------------------------------------------------
+    st.write("---")
+    st.markdown("### 🚀 跨境老鸟带路（独立开发）")
+    st.markdown(f"欢迎加入 **【跨境卖家互助搞钱群】**！群内免费分享各大平台最新避坑指南、精选货代资源。")
+    st.info(f"📌 **加作者微信：{AUTHOR_WECHAT}**\n\n备注：计算器")
 
-    result = calc_profit(
-        cai_gou=cai_gou,
-        yun_fei=yun_fei,
-        tui_huo_sun_hao=tui_huo_sun_hao,
-        shou_jia_usd=shou_jia_usd,
-        yue_xiao_liang=yue_xiao_liang,
-        yong_jin_bili=platform["yong_jin_bili"],
-        hui_lv=hui_lv,
-    )
+# ========================================================
+# 📈 右侧主面板：实时利润报告区
+# ========================================================
+st.title("📊 实时利润报告区")
 
-    m1, m2 = st.columns(2)
-    m1.metric("单件销售额 (元)", f"¥{result['xiao_shou_e']:.2f}")
-    m2.metric(
-        "平台佣金 (元)",
-        f"¥{result['ping_tai_yong_jin']:.2f}",
-        delta=f"{platform['yong_jin_bili']:.0f}%",
-        delta_color="off",
-    )
+# 联网获取实时汇率（如果失败则使用保底汇率 6.8）
+try:
+    response = requests.get("https://open.er-api.com/v6/latest/USD")
+    exchange_rate = response.json()["rates"]["CNY"]
+    st.success(f"💱 今日实时美金汇率：{exchange_rate:.4f} （已自动联网获取）")
+except:
+    exchange_rate = 6.8
+    st.warning(f"⚠️ 联网获取汇率失败，已启用保底汇率：{exchange_rate}")
 
-    m3, m4 = st.columns(2)
-    m3.metric("单件总成本 (元)", f"¥{result['zong_cheng_ben']:.2f}")
-    li_run_delta = "盈利" if result["li_run"] >= 0 else "亏损"
-    m4.metric(
-        "单件净利润 (元)",
-        f"¥{result['li_run']:.2f}",
-        delta=li_run_delta,
-        delta_color="normal" if result["li_run"] >= 0 else "inverse",
-    )
+# ----------------------------------------------------
+# 金色高亮提示按钮（收款商联盟优惠）
+# ----------------------------------------------------
+st.link_button("💡 专属福利：嫌结汇手续费太贵？点击使用专属绿色通道，结汇手续费终身尊享特惠折扣！", SETTLEMENT_PROMO_URL)
+st.write("---")
 
-    st.metric("产品毛利率 (%)", f"{result['mao_li_lv']:.2f}%")
+st.header(f"🏪 评估平台：{platform.split(' ')[0]}")
 
-    if result["mao_li_lv"] > 30:
-        st.success("🔥 这是一个潜力爆款！")
-    elif result["mao_li_lv"] < 15:
-        st.error("🚨 利润偏低，请谨慎开发")
+# 计算逻辑
+sale_price_cny = sale_price_usd * exchange_rate  # 单件销售额（人民币）
+platform_commission = sale_price_cny * commission_rate  # 平台佣金（人民币）
+total_cost_cny = cost_price + shipping_fee + return_cost  # 单件总成本（人民币）
+net_profit_cny = sale_price_cny - platform_commission - total_cost_cny  # 单件净利润（人民币）
 
-    profit_color = "#2ecc71" if result["yue_zong_li_run"] >= 0 else "#e74c3c"
-    st.markdown("---")
-    st.markdown(
-        f"""
-        <p style="font-size: 2.4rem; font-weight: 800; color: {profit_color};
-                  text-align: center; margin: 1.5rem 0;">
-            🏆 预计月总利润：¥{result['yue_zong_li_run']:,.2f} 元
-        </p>
-        """,
-        unsafe_allow_html=True,
-    )
+# 计算毛利率
+if sale_price_cny > 0:
+    margin = (net_profit_cny / sale_price_cny) * 100
+else:
+    margin = 0.0
+
+# 界面展示结果
+col1, col2 = st.columns(2)
+with col1:
+    st.metric(label="单件销售额 (元)", value=f"¥{sale_price_cny:.2f}")
+    st.metric(label="单件总成本 (元)", value=f"¥{total_cost_cny:.2f}")
+
+with col2:
+    st.metric(label="平台佣金 (元)", value=f"¥{platform_commission:.2f}", delta=f"{commission_rate*100:.0f}%")
+    if net_profit_cny > 0:
+        st.metric(label="单件净利润 (元)", value=f"¥{net_profit_cny:.2f}", delta="盈利")
+    else:
+        st.metric(label="单件净利润 (元)", value=f"¥{net_profit_cny:.2f}", delta="亏损" if net_profit_cny < 0 else "保本", delta_color="inverse")
+
+st.subheader(f"产品毛利率 (%)")
+st.title(f"{margin:.2f}%")
+
+# 利润风控提示
+if margin < 15.0 and sale_price_usd > 0:
+    st.error("🚨 利润偏低，请谨慎开发！")
+elif margin >= 15.0:
+    st.balloons()
+    st.success("🔥 这是一个潜力爆款，利润达标！")
