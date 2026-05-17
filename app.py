@@ -4,7 +4,6 @@ import requests
 # ========================================================
 # 📢 商业化配置中心（在这里输入你的真实信息）
 # ========================================================
-MY_WECHAT = "YZ19157696431"  # 👈 换成你自己的微信号
 DRIVE_DOCUMENT_URL = "https://www.baidu.com"  # 👈 以后把你整理的干货文档链接贴在这里！
 
 # 设置网页全屏布局
@@ -27,7 +26,7 @@ st.markdown("""
 
 # 👑 网页大标题
 st.title("📊 跨境电商多平台利润快速测算器")
-st.write("【全中文专业版】· 告别繁琐Excel · 实时自动联网汇率")
+st.write("告别繁琐 Excel · 实时自动联网汇率")
 st.write("---")
 
 # 🌐 第一部分：汇率与福利区
@@ -112,16 +111,3 @@ if sale_price_usd > 0:
     elif margin >= 15.0:
         st.balloons()  # 满屏飞气球特效
         st.success("🎉 恭喜：该产品利润指标达标，具备打造潜力爆款的品相！")
-
-st.write("---")
-
-# 🤝 第四部分：底部技术交流与社区引流
-st.markdown("### 🛠️ 独立开发技术交流")
-st.markdown(f"我是本项目的老板兼独立开发者。本工具完全基于 **AI + Python + Streamlit** 快速全自主构建。")
-st.markdown(f"如果你也是跨境卖家，或者对 **AI辅助编程、零基础独立开发产品、搞流量变现** 感兴趣，欢迎一起交流探讨技术！")
-
-col_foot1, col_foot2 = st.columns(2)
-with col_foot1:
-    st.info(f"📌 **我的个人微信：{MY_WECHAT}**\n\n备注：计算器交流")
-with col_foot2:
-    st.info(f"💬 **进技术/卖家交流群**\n\n加微信后拉你进群抱团搞钱")
