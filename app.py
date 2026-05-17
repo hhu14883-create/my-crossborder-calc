@@ -1,36 +1,26 @@
 import streamlit as st
 import requests
 
-# ========================================================
-# 📢 商业化配置中心（在这里输入你的真实信息）
-# ========================================================
-DRIVE_DOCUMENT_URL = "https://www.baidu.com"  # 👈 以后把你整理的干货文档链接贴在这里！
-
 # 设置网页全屏布局
 st.set_page_config(page_title="跨境电商多平台利润计算器", page_icon="📊", layout="centered")
 
-# 用自定义 CSS 彻底汉化一些 Streamlit 自带的英文组件并美化界面
+# 用自定义 CSS 隐藏干扰组件，美化输入框
 st.markdown("""
     <style>
-    /* 隐藏 Streamlit 官方菜单和页脚 */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
-    
-    /* 调整输入框样式 */
     .stNumberInput div div input {
         text-align: center;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# 👑 网页大标题
+# 👑 网页大标题（砍掉口水话，极致干净）
 st.title("📊 跨境电商多平台利润快速测算器")
-st.write("告别繁琐 Excel · 实时自动联网汇率")
 st.write("---")
 
-# 🌐 第一部分：汇率与福利区
-# 联网获取实时汇率（如果失败则使用保底汇率 6.8）
+# 🌐 第一部分：实时汇率区
 try:
     response = requests.get("https://open.er-api.com/v6/latest/USD")
     exchange_rate = response.json()["rates"]["CNY"]
@@ -39,11 +29,9 @@ except:
     exchange_rate = 6.8
     st.warning(f"⚠️ 联网获取汇率失败，已启用保底汇率：{exchange_rate}")
 
-# ⚡ 纯福利按钮：直接变身干货赠送通道，疯狂刷好评！
-st.link_button("💡 绝密干货：各大跨境平台【真实扣费佣金表】与运营避坑指南（点击免费查看）", DRIVE_DOCUMENT_URL)
 st.write("---")
 
-# 📥 第二部分：全中文输入区（全部移到正中间，方便操作）
+# 📥 第二部分：全中文输入区
 st.header("📥 第一步：输入产品数据")
 
 # 平台选择
@@ -60,7 +48,7 @@ else:
     commission_rate = 0.00
     p_name = "Temu"
 
-# 并排输入框，空间利用率更高
+# 并排输入框，操作更紧凑
 col_in1, col_in2 = st.columns(2)
 with col_in1:
     cost_price = st.number_input("2. 产品采购成本 (人民币/件)", min_value=0.0, value=0.0, step=1.0)
@@ -95,19 +83,30 @@ with col_res1:
 
 with col_res2:
     st.metric(label="📦 运营总成本 (含采购/运费/损耗)", value=f"¥{total_cost_cny:.2f}")
-    if net_profit_cny > 0:
+    if sale_price_usd == 0:
+        st.metric(label="📊 预计单件净利润", value="¥0.00", delta="等待输入数据")
+    elif net_profit_cny > 0:
         st.metric(label="🔥 预计单件净利润", value=f"¥{net_profit_cny:.2f}", delta="盈利状态")
     else:
-        st.metric(label="🚨 预计单件净利润", value=f"¥{net_profit_cny:.2f}", delta="亏损/保本" if net_profit_cny < 0 else "保本", delta_color="inverse")
+        st.metric(label="🚨 预计单件净利润", value=f"¥{net_profit_cny:.2f}", delta="亏损状态" if net_profit_cny < 0 else "保本状态", delta_color="inverse")
 
 # 展现核心毛利率
 st.subheader("💡 最终测算产品毛利率")
-st.title(f"{margin:.2f}%")
 
-# ⚠️ 核心功能：利润风控提示与炫酷气球特效
-if sale_price_usd > 0:
-    if margin < 15.0:
-        st.error("🚨 警告：该产品利润率偏低，请谨慎开发，谨防卷入价格战！")
-    elif margin >= 15.0:
+# ----------------------------------------------------
+# 🚨 强化版：亮点突出与风控提醒逻辑
+# ----------------------------------------------------
+if sale_price_usd == 0:
+    st.title("0.00%")
+    st.info("💡 请在上方输入产品数据，系统将自动为您评估利润风险...")
+else:
+    if margin >= 15.0:
+        st.markdown(f"<h1 style='color: #2ecc71;'>{margin:.2f}%</h1>", unsafe_allow_html=True)
         st.balloons()  # 满屏飞气球特效
-        st.success("🎉 恭喜：该产品利润指标达标，具备打造潜力爆款的品相！")
+        st.success(f"🎉 利润达标！该产品在 {p_name} 平台的毛利率表现极其优秀，具备打造潜力爆款的品相，建议加大力度开发！")
+    elif 0 <= margin < 15.0:
+        st.markdown(f"<h1 style='color: #f39c12;'>{margin:.2f}%</h1>", unsafe_allow_html=True)
+        st.warning("⚠️ 风险提示：产品虽然微利，但利润率低于 15% 的行业安全线。扣除后续广告引流、测评等隐形成本后极易亏损，请谨慎开发！")
+    else:
+        st.markdown(f"<h1 style='color: #e74c3c;'>{margin:.2f}%</h1>", unsafe_allow_html=True)
+        st.error(f"🚨 严重警告：该产品当前定价处于【绝对亏损】状态！每卖出一件都在倒贴钱，请立刻重新调整海外售价或死磕供应链压低成本！")
