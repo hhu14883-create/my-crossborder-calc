@@ -1,4 +1,19 @@
 import streamlit as st
+
+# 探测是不是谷歌爬虫来要地图了
+# 这一段要放在 st.title() 等任何页面渲染之前
+query_params = st.query_params
+if "page" in query_params and query_params["page"] == "sitemap":
+    st.text("""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://hhu-calc.streamlit.app/</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>""")
+    st.stop() # 停止渲染后面的精美界面，直接把这张纯文本地图吐给谷歌import streamlit as st
 import requests
 
 # 设置网页全屏布局
